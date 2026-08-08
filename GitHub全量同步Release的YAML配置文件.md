@@ -3,7 +3,7 @@
 通过编写一个定时执行的 GitHub Actions 工作流，利用脚本检测上游仓库（Upstream）的最新 Release，并自动在自己的仓库中创建对应的 Release。<br>
 ### 在你的仓库中创建文件
 `.github/workflows/sync-release.yml`
-### 同步所有releases的YAML配置代码文件
+### 同步所有Release的YAML配置代码文件
 ```yaml
 name: Sync Upstream Release
 
@@ -75,4 +75,55 @@ jobs:
             cd .. && rm -rf "$DIR_NAME"
             echo "成功同步版本: $TAG"
           done
+```
+### 只同步最新Release的YAML配置代码文件
+```yaml
+name: Sync Upstream Releases
+
+on:
+  schedule:
+    - cron: '0 * * * *' # 每小时检查一次
+  workflow_dispatch: # 支持手动触发
+
+permissions:
+  contents: write # 赋予创建 Release 的权限
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync Releases from Upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REPO: "xxx/xxxx" #修改为上游仓库，确认是否为原作者/仓库名.例如 "cli/cli"
+          TARGET_REPO: ${{ github.repository }}
+        run: |
+          LATEST_TAG=$(gh api repos/$UPSTREAM_REPO/releases/latest --jq '.tag_name' 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "未找到上游 Release"
+            exit 0
+          fi
+
+          if gh release view "$LATEST_TAG" --repo "$TARGET_REPO" >/dev/null 2>&1; then
+            echo "Release $LATEST_TAG 已存在，跳过。"
+            exit 0
+          fi
+
+          mkdir -p sync_assets && cd sync_assets
+          gh release download "$LATEST_TAG" --repo "$UPSTREAM_REPO" --dir . || true
+
+          TITLE=$(gh api repos/$UPSTREAM_REPO/releases/tags/$LATEST_TAG --jq '.name // .tag_name')
+          gh api repos/$UPSTREAM_REPO/releases/tags/$LATEST_TAG --jq '.body // ""' > release_notes.md
+
+          FILES=( $(ls -A | grep -v "^release_notes.md$") )
+
+          if [ ${#FILES[@]} -gt 0 ]; then
+            gh release create "$LATEST_TAG" "${FILES[@]}" --repo "$TARGET_REPO" --title "$TITLE" --notes-file release_notes.md
+          else
+            gh release create "$LATEST_TAG" --repo "$TARGET_REPO" --title "$TITLE" --notes-file release_notes.md
+          fi
 ```
