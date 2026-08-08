@@ -1,0 +1,2 @@
+使用 GitHub Actions 自动同步。通过编写一个定时执行的 GitHub Actions 工作流，利用脚本检测上游仓库（Upstream）的最新 Release，并自动在自己的仓库中创建对应的 Release。
+在你的仓库中创建.github/workflows/sync-release.yml
