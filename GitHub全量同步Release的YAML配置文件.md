@@ -2,7 +2,8 @@
 ## 使用 GitHub Actions 自动同步
 通过编写一个定时执行的 GitHub Actions 工作流，利用脚本检测上游仓库（Upstream）的最新 Release，并自动在自己的仓库中创建对应的 Release。<br>
 ### 在你的仓库中创建文件
-**.github/workflows/sync-release.yml**
+`.github/workflows/sync-release.yml`
+### 同步所有releases的YAML配置代码文件
 ```yaml
 name: Sync Upstream Release
 
@@ -24,7 +25,7 @@ jobs:
       - name: Sync All Releases from Upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_REPO: "Coolapk-UWP/Coolapk-UWP" #
+          UPSTREAM_REPO: "xxx/xxxx" #修改为上游仓库，确认是否为原作者/仓库名.例如 "cli/cli"
           TARGET_REPO: ${{ github.repository }}
         run: |
           # 1. 获取上游仓库所有的 Tag（倒序排列，优先从旧到新同步，保证最新版标签显示正确）
