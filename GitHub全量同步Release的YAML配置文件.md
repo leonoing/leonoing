@@ -3,6 +3,25 @@
 通过编写一个定时执行的 GitHub Actions 工作流，利用脚本检测上游仓库（Upstream）的最新 Release，并自动在自己的仓库中创建对应的 Release。<br>
 ### 在你的仓库中创建文件
 `.github/workflows/sync-release.yml`
+### 注意（no assets to download Error: Process completed with exit code 1.）如果需要同步的是 Source Code 压缩包，或者希望在没有 Custom Assets 时自动下载 Source Code，需要修改你的 Workflow 脚本：
+替换位置,请找到以下这两行代码：
+```yaml
+# 下载上游 Release 资产与 Release Notes
+gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir . || true
+```
+替换后的完整代码片段,将上述两行直接替换为以下代码：
+```yaml
+# 下载上游 Release 资产与 Release Notes
+        ASSET_COUNT=$(gh api "repos/$UPSTREAM_REPO/releases/tags/$TAG" --jq '.assets | length' 2>/dev/null || echo 0)
+
+        if [ "$ASSET_COUNT" -gt 0 ]; then
+          echo "正在下载 $TAG 的发布资产..."
+          gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir . --clobber
+        else
+          echo "版本 $TAG 无自定义资产，改为下载源码 Zip 包..."
+          gh release download "$TAG" --repo "$UPSTREAM_REPO" --archive=zip --dir . || true
+        fi
+```
 ### 同步所有Release的YAML配置代码文件
 ```yaml
 name: Sync Upstream Release
